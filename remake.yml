@@ -1,0 +1,35 @@
+sources:
+  - R/
+
+packages:
+  - RSQLite
+  - dplyr
+  - digest
+  - ggplot2
+
+targets:
+  data:
+    depends:
+      - data/sli_database.sqlite
+
+  status_csv_files:
+    command: hash_csv_files(I("data-raw-csv"))
+
+  data/sli_database.sqlite:
+    depends:
+      - status_csv_files
+    command: create_sli_database("data/sli_database.sqlite")
+
+### export fasta files ---------------------------------------------------------
+
+  sequenced_specimens:
+    command: sequenced_uf_numbers("data/sli_database.sqlite")
+
+  idigbio_ids:
+    command: idigbio_query(sequenced_specimens)
+
+  id_table_comparison:
+    command: id_table(sequenced_specimens, idigbio_ids)
+
+  data/seqs_with_idigbio_ids.fasta:
+    command: export_fasta(id_table_comparison)

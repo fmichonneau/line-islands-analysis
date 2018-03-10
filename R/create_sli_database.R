@@ -77,36 +77,36 @@ import_fasta <- function(file, prefix="FMSLI13", db_prefix="FMSL13_",
     seqData <- fcon[setdiff(seq_len(length(fcon)), titles)]
     if (length(titles) != length(seqData)) {
         stop("Each sequence should be on a single line.")
+    }
+
+    ids <- lapply(strsplit(fcon[titles], "_"), function(x) {
+        yy <- grep(prefix, x)
+        if(length(yy) > 0) {
+            plate <- x[yy+1]
+            rowL <- gsub("([A-H]{1})(\\d{2})(.*)", "\\1", x[yy+2])
+            colL <- gsub("([A-H]{1})(\\d{2})(.*)", "\\2", x[yy+2])
+            c(plate, rowL, colL)
+        }
+    })
+    title_pb <- sapply(ids, is.null)
+    if (any(title_pb)) {
+        warning(paste(fcon[titles][title_pb], collapse=", "), " don't have the prefix, and are not imported.")
+        seqData <- seqData[!title_pb]
+    }
+    res <- do.call("rbind", ids)
+    res <- data.frame(plate = paste0(db_prefix, res[, 1]),
+                      row = res[, 2],
+                      column = gsub("^0{1}", "", res[, 3]),
+                      sequence = seqData,
+                      sequence_attempt = attempt,
+                      stringsAsFactors=FALSE)
+    stopifnot(all(res$sequence_row %in% LETTERS[1:8]) &&
+              all(res$sequence_column %in% as.character(1:12)))
+    if (dry_run) {
+        return(res)
     } else {
-        ids <- lapply(strsplit(fcon[titles], "_"), function(x) {
-            yy <- grep(prefix, x)
-            if(length(yy) > 0) {
-                plate <- x[yy+1]
-                rowL <- gsub("([A-H]{1})(\\d{2})(.*)", "\\1", x[yy+2])
-                colL <- gsub("([A-H]{1})(\\d{2})(.*)", "\\2", x[yy+2])
-                c(plate, rowL, colL)
-            }
-        })
-        title_pb <- sapply(ids, is.null)
-        if (any(title_pb)) {
-            warning(paste(fcon[titles][title_pb], collapse=", "), " don't have the prefix, and are not imported.")
-            seqData <- seqData[!title_pb]
-        }
-        res <- do.call("rbind", ids)
-        res <- data.frame(plate = paste0(db_prefix, res[, 1]),
-                          row = res[, 2],
-                          column = gsub("^0{1}", "", res[, 3]),
-                          sequence = seqData,
-                          sequence_attempt = attempt,
-                          stringsAsFactors=FALSE)
-        stopifnot(all(res$sequence_row %in% LETTERS[1:8]) &&
-                  all(res$sequence_column %in% as.character(1:12)))
-        if (dry_run) {
-            return(res)
-        } else {
-            dbWriteTable(conn=con, value=res, name="sequence_data", overwrite=FALSE,
-                         row.names=FALSE, append=TRUE)
-        }
+        dbWriteTable(conn=con, value=res, name="sequence_data", overwrite=FALSE,
+                     row.names=FALSE, append=TRUE)
     }
 }
 
@@ -129,7 +129,7 @@ write_tables <- function(con, path, patterns) {
     })
 }
 
-create_sli_database <- function(database_file) {
+create_sli_database <- function(database_file, fasta_file) {
     if (file.exists(database_file))
         file.remove(database_file)
 
@@ -149,6 +149,6 @@ create_sli_database <- function(database_file) {
                    "specimens", "stations", "ufdb", "number_individuals",
                    "sli_specimens_live_head"))
 
-    import_fasta(file="data-raw-fasta/FMSLI_plates1-6_10-18_cleaned.fasta", con=con, dry_run = FALSE)
+    import_fasta(file=fasta_file, con=con, dry_run = FALSE)
     dbDisconnect(con)
 }

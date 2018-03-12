@@ -6,6 +6,8 @@ packages:
   - dplyr
   - digest
   - ggplot2
+  - tidyverse
+  - ape
 
 targets:
   data:
@@ -18,9 +20,24 @@ targets:
   data/sli_database.sqlite:
     depends:
       - status_csv_files
-    command: create_sli_database("data/sli_database.sqlite")
+    command: create_sli_database("data/sli_database.sqlite", fasta_file=cleaned_fasta)
 
-### export fasta files ---------------------------------------------------------
+### cleanup fasta file ---------------------------------------------------------
+
+  cleaned_fasta:
+    command: cleanup_fasta("data-raw-fasta/20180309-FMSLI_plates1-6_10-21 cleaned _renamed04172017 - realigned.fasta", clean_fasta=I("data-fasta/20180310-FMSLI_plates1-6_10-21_cleaned.fasta"))
+
+
+### export fasta file using UF data --------------------------------------------
+
+  data/exported_sequences.fasta:
+    command: generate_fasta("data/sli_database.sqlite", fasta_file="data/exported_sequences.fasta")
+
+  data/sli_tree.tre:
+    command: generate_tree("data/exported_sequences.fasta", "data/sli_tree.tre")
+
+
+### export fasta files using iDigBio data --------------------------------------
 
   sequenced_specimens:
     command: sequenced_uf_numbers("data/sli_database.sqlite")

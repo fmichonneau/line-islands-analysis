@@ -70,10 +70,11 @@ add_data <- function(con, file, table, ...) {
                  overwrite=FALSE, append=TRUE)
 }
 
-import_fasta <- function(file, prefix="FMSLI13", db_prefix="FMSL13_",
+import_fasta <- function(file, prefix="FMSL13", db_prefix="FMSL13_",
                          attempt=1, con, dry_run = TRUE) {
     fcon <- readLines(file)
     titles <- grep(">", fcon)
+
     seqData <- fcon[setdiff(seq_len(length(fcon)), titles)]
     if (length(titles) != length(seqData)) {
         stop("Each sequence should be on a single line.")
